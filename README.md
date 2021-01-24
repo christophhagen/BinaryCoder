@@ -144,7 +144,7 @@ When transmitting binary data between machines, the problem of different interpr
 
 This library was written after stumbling upon [BinaryCoder](https://github.com/mikeash/BinaryCoder) by [Mike Ash](https://github.com/mikeash). It doesn't use keys and also has trouble with optional values. Also doesn't use variable-length integer encoding.
 
-There's also [sticky-encoding](https://github.com/stickytools/sticky-encoding), which uses are more complex layout, and provides additional features, including out-of-order decoding, and many of the advanced `Codable` features. Unfortunately, development seem to be stale (Version 1.0.0 hasn't arrived yet, although it was announced as "coming soon" in March 2019).
+There's also [sticky-encoding](https://github.com/stickytools/sticky-encoding), which uses are more complex layout, and provides additional features, including out-of-order decoding, and many of the advanced `Codable` features. Unfortunately, development seems to be stale (Version 1.0.0 hasn't arrived yet, although it was announced as "coming soon" in March 2019). Ultimately, I wanted something a bit more space-efficient, and I didn't need the advanced features.
 
 ## License
 
