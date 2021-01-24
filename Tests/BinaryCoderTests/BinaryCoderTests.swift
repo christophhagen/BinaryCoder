@@ -1,5 +1,5 @@
 import XCTest
-import BinaryCoder
+@testable import BinaryCoder
 
 final class BinaryCoderTests: XCTestCase {
     
@@ -18,6 +18,8 @@ final class BinaryCoderTests: XCTestCase {
         ("testComplex", testComplex),
         ("testAutomaticKeys", testAutomaticKeys),
         ("testEncodeNilWithoutKeys", testEncodeNilWithoutKeys),
+        ("testDict", testDict),
+        ("testLargeValues", testLargeValues)
     ]
     
     func testPrimitiveEncoding() throws {
@@ -371,6 +373,38 @@ final class BinaryCoderTests: XCTestCase {
             XCTFail(error.localizedDescription)
         }
     }
+    
+    func testVariableLengthEncoding() throws {
+        let m1 = UInt64.max
+        let data1 = m1.variableLengthEncoding
+        let d1 = try UInt64.decode(from: Array(data1))
+        XCTAssertEqual(m1, d1.value)
+        XCTAssertEqual(d1.bytesConsumed, data1.count)
+        
+        let m2 = Int64.max
+        let data2 = m2.variableLengthEncoding
+        let d2 = try Int64.decode(from: Array(data2))
+        XCTAssertEqual(m2, d2.value)
+        XCTAssertEqual(d2.bytesConsumed, data2.count)
+        
+        let m3 = Int64.min
+        let data3 = m3.variableLengthEncoding
+        let d3 = try Int64.decode(from: Array(data3))
+        XCTAssertEqual(m3, d3.value)
+        XCTAssertEqual(d3.bytesConsumed, data3.count)
+    }
+    
+    func testLargeValues() {
+        struct MyCodable: Codable {
+            var maxU: UInt64
+            var maxI: Int64
+            var max: Int16
+        }
+        let s1 = MyCodable(maxU: .max, maxI: .max, max: .max)
+        AssertRoundtrip(s1)
+        let s2 = MyCodable(maxU: .min, maxI: .min, max: .min)
+        AssertRoundtrip(s2)
+    }
 }
 
 private func AssertEqual<T>(_ lhs: T, _ rhs: T, file: StaticString = #file, line: UInt = #line) {
@@ -380,6 +414,7 @@ private func AssertEqual<T>(_ lhs: T, _ rhs: T, file: StaticString = #file, line
 private func AssertRoundtrip<T: Codable>(_ original: T, file: StaticString = #file, line: UInt = #line) {
     do {
         let data = try BinaryEncoder.encode(original)
+        print(Array(data))
         let roundtripped = try BinaryDecoder.decode(T.self, from: data)
         AssertEqual(original, roundtripped, file: file, line: line)
     } catch {

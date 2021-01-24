@@ -19,11 +19,10 @@ extension Int64 {
      - Returns: The value encoded as binary data (1 to 9 byte)
      */
     var variableLengthEncoding: Data {
-        // Set the first bit according to the sign
-        let sign: UInt64 = (self < 0) ? 1 : 0
-        // Encode the absolute value in the remaining bytes
-        let unsigned = (UInt64(abs(self)) << 1) + sign
-        return unsigned.variableLengthEncoding
+        guard self < 0 else {
+            return (UInt64(self) << 1).variableLengthEncoding
+        }
+        return ((UInt64(-1 - self) << 1) + 1).variableLengthEncoding
     }
 }
 
@@ -44,17 +43,20 @@ extension UInt64 {
         var result = Data()
         var value = self
         while true {
+            guard result.count < 8 else {
+                result.append(UInt8(value & 0xFF))
+                return result
+            }
             // Extract 7 bit from value
             let nextByte = UInt8(value & 0x7F)
             value = value >> 7
             guard value > 0 else {
                 result.append(nextByte)
-                break
+                return result
             }
             // Set 8th bit to indicate another byte
             result.append(nextByte | 0x80)
         }
-        return result
     }
 }
 

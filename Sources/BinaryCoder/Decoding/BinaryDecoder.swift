@@ -151,7 +151,7 @@ extension BinaryDecoder {
      Attempt to decode a key and match it against the expected key data.
      - Parameter key: The expected coding key
      - Parameter data: The expected key representation.
-     - Throws:`BinaryDecodingError.prematureEndOfData` if no more bytes can be read. `BinaryDecodingError.keyMismatch` if the actual data doesn't match the expected key data.
+     - Throws:`BinaryDecodingError.unexpectedEndOfData` if no more bytes can be read. `BinaryDecodingError.keyMismatch` if the actual data doesn't match the expected key data.
      */
     func decode(key: CodingKey, data: Data) throws {
         for byte in data {
@@ -244,7 +244,7 @@ extension BinaryDecoder {
     /**
      Read an appropriate number of bytes into the memory of a type.
      - Parameter value: An initial value for the type to extract.
-     - Throws: `BinaryDecodingError.prematureEndOfData`
+     - Throws: `BinaryDecodingError.unexpectedEndOfData`
      - Returns: The value which was read from the binary data.
      */
     func read<T>(into value: T) throws -> T {
@@ -279,7 +279,7 @@ extension BinaryDecoder {
     
     /**
      Extract the next byte from the data.
-     - Throws: `BinaryDecodingError.prematureEndOfData` if no byte could be read.
+     - Throws: `BinaryDecodingError.unexpectedEndOfData` if no byte could be read.
      - Returns: The next byte in the buffer
      */
     func readByte() throws -> UInt8 {

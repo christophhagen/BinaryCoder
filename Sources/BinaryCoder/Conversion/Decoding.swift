@@ -14,14 +14,20 @@ extension UInt64 {
      
      The first bit of each byte indicates if another byte follows.
      The remaining 7 bit are the first 7 bit of the number.
-     - Throws: `BinaryDecodingError.prematureEndOfData`, `BinaryDecodingError.invalidVariableLengthEncoding`
+     - Throws: `BinaryDecodingError.unexpectedEndOfData`
      - Returns: The decoded unsigned integer.
      */
-    static func decode(_ byteProvider: () throws -> UInt8) throws -> UInt64 {
+    static func decode(_ byteProvider: () throws -> UInt8) rethrows -> UInt64 {
         var result: UInt64 = 0
         
         var shift = 0
         while true {
+            guard shift < 56 else {
+                // 9th byte has no indicator bit
+                // Use all 8 bits to get to 64 (8*7 + 8)
+                result += UInt64(try byteProvider()) << shift
+                return result
+            }
             let nextByte = UInt64(try byteProvider())
             // Insert the last 7 bit of the byte at the end
             result += UInt64(nextByte & 0x7F) << shift
@@ -30,11 +36,20 @@ extension UInt64 {
             guard nextByte & 0x80 > 0 else {
                 return result
             }
-            guard shift < 64 else {
-                // The 9th byte has the additional byte flag set
-                throw BinaryDecodingError.invalidVariableLengthEncoding
-            }
         }
+    }
+    
+    static func decode<T: RandomAccessCollection>(from data: T) throws -> (value: UInt64, bytesConsumed: Int) where T.Element == UInt8, T.Indices.Element == Int {
+        var index = 0
+        let value = try decode {
+            guard index < data.count else {
+                throw BinaryDecodingError.unexpectedEndOfData
+            }
+            let byte = data[index]
+            index += 1
+            return byte
+        }
+        return (value, index)
     }
 }
 
@@ -45,13 +60,31 @@ extension Int64 {
      
      Decodes an unsigned integer, where the last bit indicates the sign, and the absolute value is half of the decoded value
      - Parameter byteProvider: A closure providing the next byte in the data.
-     - Throws: `BinaryDecodingError.prematureEndOfData`, `BinaryDecodingError.valueOutOfRange`
+     - Throws: `BinaryDecodingError.unexpectedEndOfData`
      - Returns: The decoded signed integer.
      */
     static func decode(_ byteProvider: () throws -> UInt8) throws -> Int64 {
         let result = try UInt64.decode(byteProvider)
-        // Check the last bit to get sign and divide by two to get absolute value
-        return (result & 1 > 0) ? -Int64(result >> 1) : Int64(result >> 1)
+        // Check the last bit to get sign
+        guard result & 1 > 0 else {
+            // Divide by two to get absolute value of positive values
+            return Int64(result >> 1)
+        }
+        // Divide by 2 and subtract one to get absolute value of negative values.
+        return -Int64(result >> 1) - 1
+    }
+    
+    static func decode<T: RandomAccessCollection>(from data: T) throws -> (value: Int64, bytesConsumed: Int) where T.Element == UInt8, T.Indices.Element == Int {
+        var index = 0
+        let value = try decode {
+            guard index < data.count else {
+                throw BinaryDecodingError.unexpectedEndOfData
+            }
+            let byte = data[index]
+            index += 1
+            return byte
+        }
+        return (value, index)
     }
 }
 
@@ -74,6 +107,12 @@ extension SignedInteger {
 
 extension UnsignedInteger {
     
+    /**
+     Decode an unsigned integer using variable-length encoding.
+     
+     - Parameter byteProvider: A callback to read bytes from the data stream.
+     - Throws: `BinaryDecodingError.variableLengthEncodedValueOutOfRange` if the decoded value doesn't fit into the type
+     */
     static func decode(_ byteProvider: () throws -> UInt8) throws -> Self {
         let value = try UInt64.decode(byteProvider)
         guard let result = Self.init(exactly: value) else {
